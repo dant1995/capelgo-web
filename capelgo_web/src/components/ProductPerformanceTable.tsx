@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, ChevronDown, TrendingUp, Package } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, ChevronDown, TrendingUp, Package, Calendar } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface ProductPerformance {
@@ -16,96 +16,122 @@ interface ProductPerformance {
   unidades: number;
 }
 
+const DATE_PRESETS = [
+  { label: 'Hoje', value: 0 },
+  { label: 'Ontem', value: -1 },
+  { label: '3 Dias', value: 3 },
+  { label: '7 Dias', value: 7 },
+  { label: '30 Dias', value: 30 },
+];
+
+function getDateRange(days: number): { gte: string; lt?: string } {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (days === 0) return { gte: startOfToday.toISOString() };
+  if (days === -1) {
+    const startOfYesterday = new Date(startOfToday.getTime() - 86400000);
+    return { gte: startOfYesterday.toISOString(), lt: startOfToday.toISOString() };
+  }
+  const past = new Date(startOfToday.getTime() - days * 86400000);
+  return { gte: past.toISOString() };
+}
+
 export default function ProductPerformanceTable() {
   const [activeTab, setActiveTab] = useState<'desempenho' | 'recentes'>('desempenho');
   const [searchTerm, setSearchTerm] = useState('');
   const [categoria, setCategoria] = useState('');
+  const [selectedDays, setSelectedDays] = useState(30);
   const [produtos, setProdutos] = useState<ProductPerformance[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadData() {
-      setLoading(true);
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    const range = getDateRange(selectedDays);
 
-      const { data: prodData } = await supabase
-        .from('produtos')
-        .select('id, nome, imagem_url, visualizacoes, created_at')
-        .order('created_at', { ascending: false });
+    const { data: prodData } = await supabase
+      .from('produtos')
+      .select('id, nome, imagem_url, visualizacoes, created_at')
+      .order('created_at', { ascending: false });
 
-      if (!prodData) { setLoading(false); return; }
+    if (!prodData) { setLoading(false); return; }
 
-      const { data: clicksData } = await supabase
-        .from('produto_clicks')
-        .select('produto_id');
+    let clicksQuery = supabase.from('produto_clicks').select('produto_id, created_at');
+    if (range.gte) clicksQuery = clicksQuery.gte('created_at', range.gte);
+    if (range.lt) clicksQuery = clicksQuery.lt('created_at', range.lt);
+    const { data: clicksData } = await clicksQuery;
 
-      const clickCount: Record<string, number> = {};
-      if (clicksData) {
-        for (const c of clicksData) {
-          clickCount[c.produto_id] = (clickCount[c.produto_id] || 0) + 1;
-        }
+    const clickCount: Record<string, number> = {};
+    if (clicksData) {
+      for (const c of clicksData) {
+        clickCount[c.produto_id] = (clickCount[c.produto_id] || 0) + 1;
       }
+    }
 
-      const { data: cartData } = await supabase
-        .from('adicoes_carrinho')
-        .select('produto_id');
+    let cartQuery = supabase.from('adicoes_carrinho').select('produto_id, created_at');
+    if (range.gte) cartQuery = cartQuery.gte('created_at', range.gte);
+    if (range.lt) cartQuery = cartQuery.lt('created_at', range.lt);
+    const { data: cartData } = await cartQuery;
 
-      const cartCount: Record<string, number> = {};
-      if (cartData) {
-        for (const a of cartData) {
-          cartCount[a.produto_id] = (cartCount[a.produto_id] || 0) + 1;
-        }
+    const cartCount: Record<string, number> = {};
+    if (cartData) {
+      for (const a of cartData) {
+        cartCount[a.produto_id] = (cartCount[a.produto_id] || 0) + 1;
       }
+    }
 
-      const { data: pedidosData } = await supabase
-        .from('pedidos')
-        .select('status, itens');
+    let pedidosQuery = supabase.from('pedidos').select('status, itens, created_at');
+    if (range.gte) pedidosQuery = pedidosQuery.gte('created_at', range.gte);
+    if (range.lt) pedidosQuery = pedidosQuery.lt('created_at', range.lt);
+    const { data: pedidosData } = await pedidosQuery;
 
-      const salesCount: Record<string, { pedidos: number; unidades: number }> = {};
-      if (pedidosData) {
-        for (const pedido of pedidosData) {
-          if (pedido.status === 'cancelado') continue;
-          const itens = pedido.itens || [];
-          const seen = new Set<string>();
-          for (const item of itens) {
-            const qtd = item.qtd || item.quantidade || 1;
-            if (!salesCount[item.id]) salesCount[item.id] = { pedidos: 0, unidades: 0 };
-            salesCount[item.id].unidades += qtd;
-            if (!seen.has(item.id)) {
-              salesCount[item.id].pedidos += 1;
-              seen.add(item.id);
-            }
+    const salesCount: Record<string, { pedidos: number; unidades: number }> = {};
+    if (pedidosData) {
+      for (const pedido of pedidosData) {
+        if (pedido.status === 'cancelado') continue;
+        const itens = pedido.itens || [];
+        const seen = new Set<string>();
+        for (const item of itens) {
+          const qtd = item.qtd || item.quantidade || 1;
+          if (!salesCount[item.id]) salesCount[item.id] = { pedidos: 0, unidades: 0 };
+          salesCount[item.id].unidades += qtd;
+          if (!seen.has(item.id)) {
+            salesCount[item.id].pedidos += 1;
+            seen.add(item.id);
           }
         }
       }
-
-      const mapped: ProductPerformance[] = prodData.map(p => {
-        const sales = salesCount[p.id] || { pedidos: 0, unidades: 0 };
-        const cliques = clickCount[p.id] || 0;
-        const impressoes = p.visualizacoes || 0;
-        const adicoesCarrinho = cartCount[p.id] || 0;
-        const vendas = sales.unidades;
-        const ctr = impressoes > 0 ? (cliques / impressoes) * 100 : 0;
-        const taxaConversao = cliques > 0 ? (vendas / cliques) * 100 : 0;
-        return {
-          id: p.id,
-          nome: p.nome,
-          imagem_url: p.imagem_url?.split(',')[0] || null,
-          vendas,
-          impressoes,
-          cliques,
-          adicoesCarrinho,
-          ctr,
-          taxaConversao,
-          pedidos: sales.pedidos,
-          unidades: sales.unidades,
-        };
-      });
-
-      setProdutos(mapped);
-      setLoading(false);
     }
+
+    const mapped: ProductPerformance[] = prodData.map(p => {
+      const sales = salesCount[p.id] || { pedidos: 0, unidades: 0 };
+      const cliques = clickCount[p.id] || 0;
+      const impressoes = p.visualizacoes || 0;
+      const adicoesCarrinho = cartCount[p.id] || 0;
+      const vendas = sales.unidades;
+      const ctr = impressoes > 0 ? (cliques / impressoes) * 100 : 0;
+      const taxaConversao = cliques > 0 ? (vendas / cliques) * 100 : 0;
+      return {
+        id: p.id,
+        nome: p.nome,
+        imagem_url: p.imagem_url?.split(',')[0] || null,
+        vendas,
+        impressoes,
+        cliques,
+        adicoesCarrinho,
+        ctr,
+        taxaConversao,
+        pedidos: sales.pedidos,
+        unidades: sales.unidades,
+      };
+    });
+
+    setProdutos(mapped);
+    setLoading(false);
+  }, [selectedDays]);
+
+  useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const filtered = produtos.filter(p => {
     const matchSearch = p.nome.toLowerCase().includes(searchTerm.toLowerCase());
@@ -154,6 +180,23 @@ export default function ProductPerformanceTable() {
         <button className="ml-auto bg-white border border-shopee-orange text-shopee-orange rounded-xl px-5 py-2.5 text-[11px] font-bold hover:bg-shopee-orange hover:text-white transition-all whitespace-nowrap">
           Selecionar Métricas
         </button>
+      </div>
+
+      <div className="flex items-center gap-2 mb-6 flex-wrap">
+        <Calendar size={14} className="text-gray-400" />
+        {DATE_PRESETS.map(p => (
+          <button
+            key={p.value}
+            onClick={() => setSelectedDays(p.value)}
+            className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${
+              selectedDays === p.value
+                ? 'bg-shopee-orange text-white shadow-sm'
+                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
       </div>
 
       <div className="flex items-center gap-6 border-b border-slate-100 mb-6">
