@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, ChevronDown, TrendingUp, Package } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface ProductPerformance {
   id: string;
   nome: string;
-  imagem: string;
+  imagem_url: string | null;
   vendas: number;
   impressoes: number;
   cliques: number;
@@ -15,31 +16,104 @@ interface ProductPerformance {
   unidades: number;
 }
 
-const PRODUCT_IMAGES = [
-  'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&h=100&fit=crop',
-  'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100&h=100&fit=crop',
-  'https://images.unsplash.com/photo-1546868871-af0de0ae72b8?w=100&h=100&fit=crop',
-  'https://images.unsplash.com/photo-1547949003-9792a18a2601?w=100&h=100&fit=crop',
-  'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=100&h=100&fit=crop',
-  'https://images.unsplash.com/photo-1600080972464-8e5f35f7d1cd?w=100&h=100&fit=crop',
-];
-
-const MOCK_DATA: ProductPerformance[] = [
-  { id: 'PROD-001', nome: 'Fone Bluetooth TWS com Cancelamento de Ruído Ativo e Carregamento Rápido', imagem: PRODUCT_IMAGES[0], vendas: 1247, impressoes: 45890, cliques: 8921, adicoesCarrinho: 3210, ctr: 19.44, taxaConversao: 13.98, pedidos: 1042, unidades: 1247 },
-  { id: 'PROD-002', nome: 'Carregador Turbo 65W USB-C + USB-A Carregamento Rápido', imagem: PRODUCT_IMAGES[1], vendas: 892, impressoes: 32450, cliques: 6543, adicoesCarrinho: 2345, ctr: 20.16, taxaConversao: 13.63, pedidos: 768, unidades: 892 },
-  { id: 'PROD-003', nome: 'Power Bank 10000mAh Carrega 3 Dispositivos Simultaneamente', imagem: PRODUCT_IMAGES[2], vendas: 756, impressoes: 28760, cliques: 5432, adicoesCarrinho: 1876, ctr: 18.88, taxaConversao: 13.91, pedidos: 654, unidades: 756 },
-  { id: 'PROD-004', nome: 'Cabo USB-C 2m Carregamento Rápido 3A Transmissão de Dados', imagem: PRODUCT_IMAGES[3], vendas: 523, impressoes: 19870, cliques: 3876, adicoesCarrinho: 1432, ctr: 19.50, taxaConversao: 13.49, pedidos: 456, unidades: 523 },
-  { id: 'PROD-005', nome: 'Película Vidro 9H Proteção para Telas Resistente a Arranhões', imagem: PRODUCT_IMAGES[4], vendas: 412, impressoes: 15640, cliques: 2987, adicoesCarrinho: 1098, ctr: 19.10, taxaConversao: 13.79, pedidos: 356, unidades: 412 },
-  { id: 'PROD-006', nome: 'Mouse Sem Fio 2.4GHz DPI Ajustável Design Ergonômico', imagem: PRODUCT_IMAGES[5], vendas: 345, impressoes: 13450, cliques: 2543, adicoesCarrinho: 876, ctr: 18.91, taxaConversao: 13.56, pedidos: 298, unidades: 345 },
-];
-
 export default function ProductPerformanceTable() {
   const [activeTab, setActiveTab] = useState<'desempenho' | 'recentes'>('desempenho');
   const [searchTerm, setSearchTerm] = useState('');
   const [categoria, setCategoria] = useState('');
+  const [produtos, setProdutos] = useState<ProductPerformance[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = MOCK_DATA.filter(p =>
-    p.nome.toLowerCase().includes(searchTerm.toLowerCase())
+  useEffect(() => {
+    async function loadData() {
+      setLoading(true);
+
+      const { data: prodData } = await supabase
+        .from('produtos')
+        .select('id, nome, imagem_url, visualizacoes, created_at')
+        .order('created_at', { ascending: false });
+
+      if (!prodData) { setLoading(false); return; }
+
+      const { data: clicksData } = await supabase
+        .from('produto_clicks')
+        .select('produto_id');
+
+      const clickCount: Record<string, number> = {};
+      if (clicksData) {
+        for (const c of clicksData) {
+          clickCount[c.produto_id] = (clickCount[c.produto_id] || 0) + 1;
+        }
+      }
+
+      const { data: cartData } = await supabase
+        .from('adicoes_carrinho')
+        .select('produto_id');
+
+      const cartCount: Record<string, number> = {};
+      if (cartData) {
+        for (const a of cartData) {
+          cartCount[a.produto_id] = (cartCount[a.produto_id] || 0) + 1;
+        }
+      }
+
+      const { data: pedidosData } = await supabase
+        .from('pedidos')
+        .select('status, itens');
+
+      const salesCount: Record<string, { pedidos: number; unidades: number }> = {};
+      if (pedidosData) {
+        for (const pedido of pedidosData) {
+          if (pedido.status === 'cancelado') continue;
+          const itens = pedido.itens || [];
+          const seen = new Set<string>();
+          for (const item of itens) {
+            const qtd = item.qtd || item.quantidade || 1;
+            if (!salesCount[item.id]) salesCount[item.id] = { pedidos: 0, unidades: 0 };
+            salesCount[item.id].unidades += qtd;
+            if (!seen.has(item.id)) {
+              salesCount[item.id].pedidos += 1;
+              seen.add(item.id);
+            }
+          }
+        }
+      }
+
+      const mapped: ProductPerformance[] = prodData.map(p => {
+        const sales = salesCount[p.id] || { pedidos: 0, unidades: 0 };
+        const cliques = clickCount[p.id] || 0;
+        const impressoes = p.visualizacoes || 0;
+        const adicoesCarrinho = cartCount[p.id] || 0;
+        const vendas = sales.unidades;
+        const ctr = impressoes > 0 ? (cliques / impressoes) * 100 : 0;
+        const taxaConversao = cliques > 0 ? (vendas / cliques) * 100 : 0;
+        return {
+          id: p.id,
+          nome: p.nome,
+          imagem_url: p.imagem_url?.split(',')[0] || null,
+          vendas,
+          impressoes,
+          cliques,
+          adicoesCarrinho,
+          ctr,
+          taxaConversao,
+          pedidos: sales.pedidos,
+          unidades: sales.unidades,
+        };
+      });
+
+      setProdutos(mapped);
+      setLoading(false);
+    }
+    loadData();
+  }, []);
+
+  const filtered = produtos.filter(p => {
+    const matchSearch = p.nome.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchSearch;
+  });
+
+  const sorted = [...filtered].sort((a, b) =>
+    activeTab === 'desempenho' ? b.vendas - a.vendas : 0
   );
 
   const formatNum = (n: number) => n.toLocaleString('pt-BR');
@@ -122,13 +196,13 @@ export default function ProductPerformanceTable() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {filtered.map((p) => (
+            {sorted.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-3">
                     <div className="w-11 h-11 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center shrink-0 overflow-hidden">
-                      {p.imagem ? (
-                        <img src={p.imagem} alt={p.nome} className="w-full h-full object-cover" />
+                      {p.imagem_url ? (
+                        <img src={p.imagem_url} alt={p.nome} className="w-full h-full object-cover" />
                       ) : (
                         <Package size={16} className="text-slate-300" />
                       )}
@@ -158,7 +232,14 @@ export default function ProductPerformanceTable() {
         </table>
       </div>
 
-      {filtered.length === 0 && (
+      {loading && (
+        <div className="text-center py-16 text-slate-400">
+          <div className="animate-spin w-8 h-8 border-2 border-shopee-orange border-t-transparent rounded-full mx-auto mb-3"></div>
+          <p className="text-sm font-medium">Carregando dados...</p>
+        </div>
+      )}
+
+      {!loading && sorted.length === 0 && (
         <div className="text-center py-16 text-slate-400">
           <TrendingUp size={40} className="mx-auto mb-3 opacity-30" />
           <p className="text-sm font-medium">Nenhum produto encontrado</p>
