@@ -145,11 +145,16 @@ export default function HomePage() {
   useEffect(() => {
     if (produtos.length > 0 && !viewCounted.current) {
       viewCounted.current = true;
+      const today = new Date().toISOString().split('T')[0];
+      const stored = JSON.parse(localStorage.getItem('capelgo_views') || '{}') as Record<string, string>;
       produtos.forEach(p => {
+        if (stored[p.id] === today) return;
         supabase.from('produtos').update({ visualizacoes: (p.visualizacoes || 0) + 1 }).eq('id', p.id).then(({ error }) => {
           if (error) console.warn('Erro ao registrar visualizacao:', error.message);
         });
+        stored[p.id] = today;
       });
+      localStorage.setItem('capelgo_views', JSON.stringify(stored));
     }
   }, [produtos]);
 

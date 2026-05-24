@@ -219,10 +219,15 @@ export default function ProductDetail() {
 
   useEffect(() => {
     if (produto && !viewCounted.current) {
+      const today = new Date().toISOString().split('T')[0];
+      const stored = JSON.parse(localStorage.getItem('capelgo_views') || '{}') as Record<string, string>;
+      if (stored[produto.id] === today) return;
       viewCounted.current = true;
       supabase.from('produtos').update({ visualizacoes: (produto.visualizacoes || 0) + 1 }).eq('id', produto.id).then(({ error }) => {
         if (error) console.warn('Erro ao registrar visualizacao:', error.message);
       });
+      stored[produto.id] = today;
+      localStorage.setItem('capelgo_views', JSON.stringify(stored));
     }
   }, [produto]);
 
