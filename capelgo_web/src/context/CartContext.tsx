@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { supabase } from '../lib/supabase';
 
 interface CartItem {
   id: string;
@@ -8,7 +9,7 @@ interface CartItem {
   imagem_url?: string;
   loja_id?: string;
   loja_nome?: string;
-  variacao?: string; // Ex: "Cor: Rosa, Tamanho: P"
+  variacao?: string;
   premio_nome?: string;
 }
 
@@ -27,7 +28,14 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
 
-  const addToCart = (product: any) => {
+  const addToCart = async (product: any) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    supabase.from('adicoes_carrinho').insert({
+      produto_id: product.id,
+      usuario_id: session?.user?.id || null,
+    }).then(({ error }) => {
+      if (error) console.warn('Erro ao registrar adicao ao carrinho:', error.message);
+    });
     setItems(prev => {
       const existing = prev.find(i => i.id === product.id);
       if (existing) {

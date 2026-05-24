@@ -8,6 +8,7 @@ interface ProductPerformance {
   vendas: number;
   impressoes: number;
   cliques: number;
+  adicoesCarrinho: number;
   ctr: number;
   taxaConversao: number;
   pedidos: number;
@@ -24,12 +25,12 @@ const PRODUCT_IMAGES = [
 ];
 
 const MOCK_DATA: ProductPerformance[] = [
-  { id: 'PROD-001', nome: 'Fone Bluetooth TWS com Cancelamento de Ruído Ativo e Carregamento Rápido', imagem: PRODUCT_IMAGES[0], vendas: 1247, impressoes: 45890, cliques: 8921, ctr: 19.44, taxaConversao: 13.98, pedidos: 1042, unidades: 1247 },
-  { id: 'PROD-002', nome: 'Carregador Turbo 65W USB-C + USB-A Carregamento Rápido', imagem: PRODUCT_IMAGES[1], vendas: 892, impressoes: 32450, cliques: 6543, ctr: 20.16, taxaConversao: 13.63, pedidos: 768, unidades: 892 },
-  { id: 'PROD-003', nome: 'Power Bank 10000mAh Carrega 3 Dispositivos Simultaneamente', imagem: PRODUCT_IMAGES[2], vendas: 756, impressoes: 28760, cliques: 5432, ctr: 18.88, taxaConversao: 13.91, pedidos: 654, unidades: 756 },
-  { id: 'PROD-004', nome: 'Cabo USB-C 2m Carregamento Rápido 3A Transmissão de Dados', imagem: PRODUCT_IMAGES[3], vendas: 523, impressoes: 19870, cliques: 3876, ctr: 19.50, taxaConversao: 13.49, pedidos: 456, unidades: 523 },
-  { id: 'PROD-005', nome: 'Película Vidro 9H Proteção para Telas Resistente a Arranhões', imagem: PRODUCT_IMAGES[4], vendas: 412, impressoes: 15640, cliques: 2987, ctr: 19.10, taxaConversao: 13.79, pedidos: 356, unidades: 412 },
-  { id: 'PROD-006', nome: 'Mouse Sem Fio 2.4GHz DPI Ajustável Design Ergonômico', imagem: PRODUCT_IMAGES[5], vendas: 345, impressoes: 13450, cliques: 2543, ctr: 18.91, taxaConversao: 13.56, pedidos: 298, unidades: 345 },
+  { id: 'PROD-001', nome: 'Fone Bluetooth TWS com Cancelamento de Ruído Ativo e Carregamento Rápido', imagem: PRODUCT_IMAGES[0], vendas: 1247, impressoes: 45890, cliques: 8921, adicoesCarrinho: 3210, ctr: 19.44, taxaConversao: 13.98, pedidos: 1042, unidades: 1247 },
+  { id: 'PROD-002', nome: 'Carregador Turbo 65W USB-C + USB-A Carregamento Rápido', imagem: PRODUCT_IMAGES[1], vendas: 892, impressoes: 32450, cliques: 6543, adicoesCarrinho: 2345, ctr: 20.16, taxaConversao: 13.63, pedidos: 768, unidades: 892 },
+  { id: 'PROD-003', nome: 'Power Bank 10000mAh Carrega 3 Dispositivos Simultaneamente', imagem: PRODUCT_IMAGES[2], vendas: 756, impressoes: 28760, cliques: 5432, adicoesCarrinho: 1876, ctr: 18.88, taxaConversao: 13.91, pedidos: 654, unidades: 756 },
+  { id: 'PROD-004', nome: 'Cabo USB-C 2m Carregamento Rápido 3A Transmissão de Dados', imagem: PRODUCT_IMAGES[3], vendas: 523, impressoes: 19870, cliques: 3876, adicoesCarrinho: 1432, ctr: 19.50, taxaConversao: 13.49, pedidos: 456, unidades: 523 },
+  { id: 'PROD-005', nome: 'Película Vidro 9H Proteção para Telas Resistente a Arranhões', imagem: PRODUCT_IMAGES[4], vendas: 412, impressoes: 15640, cliques: 2987, adicoesCarrinho: 1098, ctr: 19.10, taxaConversao: 13.79, pedidos: 356, unidades: 412 },
+  { id: 'PROD-006', nome: 'Mouse Sem Fio 2.4GHz DPI Ajustável Design Ergonômico', imagem: PRODUCT_IMAGES[5], vendas: 345, impressoes: 13450, cliques: 2543, adicoesCarrinho: 876, ctr: 18.91, taxaConversao: 13.56, pedidos: 298, unidades: 345 },
 ];
 
 export default function ProductPerformanceTable() {
@@ -112,6 +113,7 @@ export default function ProductPerformanceTable() {
               <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Vendas</th>
               <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Impressões de Produto</th>
               <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Cliques Por Produto</th>
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Adições ao Carrinho</th>
               <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">CTR</th>
               <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Taxa de Conversão de Pedidos</th>
               <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Pedidos</th>
@@ -140,6 +142,7 @@ export default function ProductPerformanceTable() {
                 <td className="px-5 py-4 text-right text-[12px] font-semibold text-slate-700">{formatNum(p.vendas)}</td>
                 <td className="px-5 py-4 text-right text-[12px] font-semibold text-slate-700">{formatNum(p.impressoes)}</td>
                 <td className="px-5 py-4 text-right text-[12px] font-semibold text-slate-700">{formatNum(p.cliques)}</td>
+                <td className="px-5 py-4 text-right text-[12px] font-semibold text-shopee-orange">{formatNum(p.adicoesCarrinho)}</td>
                 <td className="px-5 py-4 text-right text-[12px] font-semibold text-slate-700">{formatPct(p.ctr)}</td>
                 <td className="px-5 py-4 text-right text-[12px] font-semibold text-slate-700">{formatPct(p.taxaConversao)}</td>
                 <td className="px-5 py-4 text-right text-[12px] font-semibold text-slate-700">{formatNum(p.pedidos)}</td>
