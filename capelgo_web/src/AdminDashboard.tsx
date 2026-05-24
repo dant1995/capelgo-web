@@ -65,6 +65,7 @@ import AdminFinancialReports from './components/AdminFinancialReports';
 import BulkProductCreator from './components/BulkProductCreator';
 import { useConfig } from './context/ConfigContext';
 import DateFilterBar from './components/DateFilterBar';
+import ProductPerformanceTable from './components/ProductPerformanceTable';
 
 // Carregar Leaflet via CDN dinamicamente
 const LEAFLET_CSS = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
@@ -3918,6 +3919,18 @@ export default function AdminDashboard() {
                      <BulkProductCreator supabase={supabase} lojas={lojas} onComplete={() => fetchRealData()} />
                   )}
 
+                  {activeTab === 'performance' && (
+                     <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
+                       <div className="flex justify-between items-end">
+                         <div>
+                           <h2 className="text-xl font-black text-slate-800 tracking-tighter">Performance</h2>
+                           <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Relatório de desempenho dos produtos</p>
+                         </div>
+                       </div>
+                       <ProductPerformanceTable />
+                     </div>
+                  )}
+
                  {activeTab === 'chat' && (
                     <div className="p-8">
                        <h2 className="text-3xl font-black text-slate-800 tracking-tighter mb-8">Monitor Global de Mensagens</h2>
@@ -5252,6 +5265,7 @@ function AdminSidebarContent({ activeTab, setActiveTab, navigate, fetchRealData 
           <AdminMenuBtn icon={<DollarSign size={18}/>} label="Financeiro" active={activeTab === 'financeiro'} onClick={() => setActiveTab('financeiro')} />
           <AdminMenuBtn icon={<Package size={18}/>} label="Produtos" active={activeTab === 'produtos'} onClick={() => setActiveTab('produtos')} />
           <AdminMenuBtn icon={<Layers size={18}/>} label="Criação em Massa" active={activeTab === 'criacao_massa'} onClick={() => setActiveTab('criacao_massa')} />
+          <AdminMenuBtn icon={<TrendingUp size={18}/>} label="Performance" active={activeTab === 'performance'} onClick={() => setActiveTab('performance')} />
           <AdminMenuBtn icon={<Printer size={18}/>} label="Envio em Massa" active={activeTab === 'envio_massa'} onClick={() => setActiveTab('envio_massa')} />
           <AdminMenuBtn icon={<MessageSquare size={18}/>} label="Chat" active={activeTab === 'chat'} onClick={() => setActiveTab('chat')} />
           <AdminMenuBtn icon={<Settings size={18}/>} label="Ajustes" active={activeTab === 'ajustes'} onClick={() => setActiveTab('ajustes')} />
