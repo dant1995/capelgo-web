@@ -1,0 +1,1 @@
+Certo, adicionei logs (mensagens de alerta) na funÃ§Ã£o de criaÃ§Ã£o de produtos para mostrar as imagens que estÃ£o sendo geradas. Teste novamente e me diga se as imagens agora estÃ£o diferentes ou se o problema persiste.

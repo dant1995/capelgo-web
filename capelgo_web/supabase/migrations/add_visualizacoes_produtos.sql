@@ -1,0 +1,1 @@
+ALTER TABLE public.produtos ADD COLUMN IF NOT EXISTS visualizacoes INTEGER DEFAULT 0;
